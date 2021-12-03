@@ -1,0 +1,130 @@
+Query 1 - Sales
+
+The number of products sold by category and by month, with comparison and rate of change compared to the same month of the previous year.
+# requête finale ajoutée sur tableau
+# pas de filtre sur les 3 derniers mois sur SQL mais sur tableau si on souhaite visualiser un mois en particulier
+
+SELECT 
+	p.productLine as category, 
+	month(o.orderDate) as month, 
+  SUM(CASE WHEN YEAR(o.orderDate) = year(current_date) THEN quantityOrdered ELSE 0 END) AS products_sold_current_year,
+  SUM(CASE WHEN YEAR(o.orderDate) = year(current_date)-1 THEN quantityOrdered ELSE 0 END) AS products_sold_last_year,
+  round((SUM(CASE WHEN YEAR(o.orderDate) = year(current_date) THEN quantityOrdered ELSE 0 END)-SUM(CASE WHEN year(o.orderDate) = year(current_date)-1 THEN quantityOrdered ELSE 0 END))/SUM(CASE WHEN year(o.orderDate) = year(current_date)-1 THEN quantityOrdered ELSE 0 END) * 100, 2) AS change_rate
+FROM orders o
+JOIN orderdetails od ON o.orderNumber = od.orderNumber
+JOIN products p ON od.productCode = p.productCode
+WHERE year(o.orderDate) = 2021 or year(o.orderDate) = 2020
+group by category, month
+order by category, month
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------
+# Quest 2 - finance
+
+# The turnover of the orders of the last two months by country (selon pays filiale entreprise). 
+# demande turnover mois courant + 2 mois précédents par mois et par pays
+# nous avons conservé les mois car nous avons noté qu'il n'y avait pas de turnover pour certains pays certains mois (ouverture pays ?)
+
+# attention préciser que si l'on reste comme cela, les 3 offices USA sont agrégées pour un turnover pays (limite à indiquer ?)
+# attention mis par ordre turnover descendant mais comment gérer le fait d'avoir différent mois ? peut-être dans le général pas de différenciation
+# mois, à garder pour les indicateurs détaillés ? 
+# les 2 derniers mois terminés ou les 2 derniers mois à partir de la date de rafraîchissement ? 
+
+SELECT oc.country, MONTH(o.orderDate), SUM(od.quantityOrdered*od.priceEach) as turnover
+FROM orderdetails od
+JOIN orders AS o
+	ON o.orderNumber = od.orderNumber
+JOIN customers c
+	ON c.customerNumber = o.customerNumber 
+JOIN employees e
+	ON e.employeeNumber = c.salesRepEmployeeNumber
+JOIN offices oc
+	ON oc.officeCode = e.officeCode
+WHERE 
+	CASE
+		WHEN MONTH(CURRENT_DATE) = 1 THEN (MONTH(o.orderDate) = MONTH(current_date) AND YEAR(o.orderDate) = YEAR(current_date)) OR (MONTH(o.orderDate) = MONTH(current_date)-1 AND YEAR(o.orderDate) = YEAR(current_date)-1) OR (MONTH(o.orderDate) = MONTH(current_date)-2 AND YEAR(o.orderDate) = YEAR(current_date)-1)
+		WHEN MONTH(CURRENT_DATE) = 2 THEN (MONTH(o.orderDate) = MONTH(current_date) AND YEAR(o.orderDate) = YEAR(current_date)) OR (MONTH(o.orderDate) = MONTH(current_date)-1 AND YEAR(o.orderDate) = YEAR(current_date)) OR (MONTH(o.orderDate) = MONTH(current_date)-2 AND YEAR(o.orderDate) = YEAR(current_date)-1)
+    ELSE (MONTH(o.orderDate) = MONTH(current_date)-1 AND YEAR(o.orderDate) = YEAR(current_date)) OR (MONTH(o.orderDate) = MONTH(current_date)-2 AND YEAR(o.orderDate) = YEAR(current_date))
+	END
+GROUP BY oc.country, MONTH(o.orderDate)
+ORDER BY turnover DESC
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
+# Quest 3 - finance
+
+# select du montant des commandes envoyées
+# 2 clauses select dans FROM pour récupérer les infos vérifiées du montant des commandes et du montant des paiements car jointure impossible
+# Limite 1 : impossible de faire un filtre sur la date d'envoi ou autres données des commandes pour la partie des paiements
+# nous avons donc pris toutes les commandes en statut "shipped" ou "resolved" et déduits tous les paiements reçus en date du jour
+# si paiement avant envoi même partiel, le calcul est faussé + aucune prise en compte des dates d'échéance client si besoin
+# limite 2 : que veut dire "on hold" ? est-ce en attente d'envoi ou en attente de résolution litige (existe "resolved")
+# ici nous avons considéré que ça signifie en attente de résolution litige
+# limite 3 : pas assez de statut pour les commandes, par ex : "en cours préparation", "to be shipped"
+# limite 4 : impossible de filtrer les paiements par rapport à une info de la table orders (donc orderDate ou shippedDate) par conséquent 
+
+SELECT total_orders_shipped - payments AS orders_shipped_not_paid
+FROM 
+	(SELECT SUM(od.quantityOrdered * od.priceEach) AS total_orders_shipped
+	FROM customers c
+	JOIN orders o ON c.customerNumber = o.customerNumber
+	JOIN orderdetails od ON o.orderNumber = od.orderNumber
+  WHERE status = "Shipped" or status = "Resolved" or status = "On hold") AS total_orders,
+  (SELECT SUM(p.amount) AS payments
+	FROM payments p) AS payments_received
+  
+  
+  
+----------------------------------------------------------------------------------------------------------------------------------
+  
+  #Quest 4 - logistics
+  # requête finale utilisée sur tableau
+
+# 5 produits les plus commandés sur le mois en cours et les 2 mois précédents
+# changement ORDER BY pour ordonné par quantité commandée
+
+# pourquoi sortir un indicateur global alors que 7 pays dont certains très éloignés ? par pays ? par filiale ? 
+
+SELECT p.productName, p.productCode, p.quantityInStock, SUM(quantityOrdered) AS quantity_ordered_in_current_quarter
+FROM products p
+JOIN orderdetails od
+	ON od.productCode = p.productCode
+JOIN orders o
+	ON o.orderNumber = od.orderNumber
+WHERE 
+	CASE
+		WHEN MONTH(CURRENT_DATE) = 1 THEN (MONTH(o.orderDate) = MONTH(current_date) AND YEAR(o.orderDate) = YEAR(current_date)) OR (MONTH(o.orderDate) = MONTH(current_date)-1 AND YEAR(o.orderDate) = YEAR(current_date)-1) OR (MONTH(o.orderDate) = MONTH(current_date)-2 AND YEAR(o.orderDate) = YEAR(current_date)-1)
+		WHEN MONTH(CURRENT_DATE) = 2 THEN (MONTH(o.orderDate) = MONTH(current_date) AND YEAR(o.orderDate) = YEAR(current_date)) OR (MONTH(o.orderDate) = MONTH(current_date)-1 AND YEAR(o.orderDate) = YEAR(current_date)) OR (MONTH(o.orderDate) = MONTH(current_date)-2 AND YEAR(o.orderDate) = YEAR(current_date)-1)
+    ELSE (MONTH(o.orderDate) = MONTH(current_date)-1 AND YEAR(o.orderDate) = YEAR(current_date)) OR (MONTH(o.orderDate) = MONTH(current_date)-2 AND YEAR(o.orderDate) = YEAR(current_date))
+	END
+GROUP BY productName, p.productCode, quantityInStock
+ORDER BY quantity_ordered_in_current_quarter DESC 
+Limit 5;
+
+
+--------------------------------------------------------------------------------------------------------------------------------------
+
+# Quest 5
+
+# requête objectif 5 RH 
+# Each month, the 2 sellers with the highest turnover.
+# Period : month ended before the current date
+
+SELECT e.employeeNumber,
+	CONCAT(e.lastName, ' ', e.firstName) AS name, 
+  SUM(od.quantityOrdered * od.priceEach) AS turnover
+FROM employees e
+JOIN customers c ON e.employeeNumber = c.salesRepEmployeeNumber
+JOIN orders o ON c.customerNumber = o.customerNumber
+JOIN orderdetails od ON o.orderNumber = od.orderNumber
+WHERE o.status != 'Cancelled' AND
+	CASE
+		WHEN MONTH(CURRENT_DATE) = 1 THEN MONTH(orderDate) = MONTH(current_date)-1 AND YEAR(orderDate) = YEAR(current_date)-1
+		ELSE MONTH(orderDate) = MONTH(current_date)-1 AND YEAR(orderDate) = YEAR(current_date)
+	END
+GROUP BY c.salesRepEmployeeNumber
+ORDER BY turnover DESC
+Limit 2 
