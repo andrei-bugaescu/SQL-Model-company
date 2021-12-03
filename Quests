@@ -1,8 +1,7 @@
 Query 1 - Sales
 
 The number of products sold by category and by month, with comparison and rate of change compared to the same month of the previous year.
-# requête finale ajoutée sur tableau
-# pas de filtre sur les 3 derniers mois sur SQL mais sur tableau si on souhaite visualiser un mois en particulier
+# no filter on the last 3 months on SQL but on table if you want to view a particular month
 
 SELECT 
 	p.productLine as category, 
@@ -23,13 +22,13 @@ order by category, month
 # Quest 2 - finance
 
 # The turnover of the orders of the last two months by country (selon pays filiale entreprise). 
-# demande turnover mois courant + 2 mois précédents par mois et par pays
-# nous avons conservé les mois car nous avons noté qu'il n'y avait pas de turnover pour certains pays certains mois (ouverture pays ?)
+# turnover request current month + 2 previous months per month and per country
+# we kept the months because we noted that there was no turnover for certain countries in certain months (country opening?)
 
-# attention préciser que si l'on reste comme cela, les 3 offices USA sont agrégées pour un turnover pays (limite à indiquer ?)
-# attention mis par ordre turnover descendant mais comment gérer le fait d'avoir différent mois ? peut-être dans le général pas de différenciation
-# mois, à garder pour les indicateurs détaillés ? 
-# les 2 derniers mois terminés ou les 2 derniers mois à partir de la date de rafraîchissement ? 
+# be careful to specify that if we stay like this, the 3 USA offices are aggregated for a country turnover (limit to be indicated?)
+# attention put in order of descending turnover but how to manage the fact of having different months? perhaps in general no differentiation
+# months, to keep for detailed indicators?
+# the last 2 months completed or the last 2 months from the date of refresh?
 
 SELECT oc.country, MONTH(o.orderDate), SUM(od.quantityOrdered*od.priceEach) as turnover
 FROM orderdetails od
@@ -56,15 +55,15 @@ ORDER BY turnover DESC
 
 # Quest 3 - finance
 
-# select du montant des commandes envoyées
-# 2 clauses select dans FROM pour récupérer les infos vérifiées du montant des commandes et du montant des paiements car jointure impossible
-# Limite 1 : impossible de faire un filtre sur la date d'envoi ou autres données des commandes pour la partie des paiements
-# nous avons donc pris toutes les commandes en statut "shipped" ou "resolved" et déduits tous les paiements reçus en date du jour
-# si paiement avant envoi même partiel, le calcul est faussé + aucune prise en compte des dates d'échéance client si besoin
-# limite 2 : que veut dire "on hold" ? est-ce en attente d'envoi ou en attente de résolution litige (existe "resolved")
-# ici nous avons considéré que ça signifie en attente de résolution litige
-# limite 3 : pas assez de statut pour les commandes, par ex : "en cours préparation", "to be shipped"
-# limite 4 : impossible de filtrer les paiements par rapport à une info de la table orders (donc orderDate ou shippedDate) par conséquent 
+# select the amount of orders sent
+# 2 select clauses in FROM to retrieve the verified information of the amount of orders and the amount of payments because join impossible
+# Limit 1: impossible to filter on the date of dispatch or other order data for the payment part
+# we have therefore taken all orders in "shipped" or "resolved" status and deducted all payments received as of today
+# if payment before sending, even partial, the calculation is distorted + no account is taken of customer due dates if necessary
+# limit 2: what does "on hold" mean? is it pending sending or pending dispute resolution (exists "resolved")
+# here we have considered it to mean pending dispute resolution
+# limit 3: not enough status for orders, eg: "in preparation", "to be shipped"
+# limit 4: impossible to filter the payments based on an info from the orders table (therefore orderDate or shippedDate) therefore
 
 SELECT total_orders_shipped - payments AS orders_shipped_not_paid
 FROM 
@@ -80,13 +79,13 @@ FROM
   
 ----------------------------------------------------------------------------------------------------------------------------------
   
-  #Quest 4 - logistics
-  # requête finale utilisée sur tableau
+#Quest 4 - logistics
 
-# 5 produits les plus commandés sur le mois en cours et les 2 mois précédents
-# changement ORDER BY pour ordonné par quantité commandée
 
-# pourquoi sortir un indicateur global alors que 7 pays dont certains très éloignés ? par pays ? par filiale ? 
+# 5 most ordered products in the current month and the 2 previous months
+# change ORDER BY for ordered by quantity ordered
+
+# why release a global indicator when only 7 countries, some of which are very distant? by country ? by subsidiary?
 
 SELECT p.productName, p.productCode, p.quantityInStock, SUM(quantityOrdered) AS quantity_ordered_in_current_quarter
 FROM products p
@@ -109,7 +108,6 @@ Limit 5;
 
 # Quest 5
 
-# requête objectif 5 RH 
 # Each month, the 2 sellers with the highest turnover.
 # Period : month ended before the current date
 
